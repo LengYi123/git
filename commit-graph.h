@@ -47,15 +47,21 @@ struct commit_graph {
 	unsigned char num_chunks;
 	uint32_t num_commits;
 	struct object_id oid;
+	char *filename;
+	const char *obj_dir;
+
+	uint32_t num_commits_in_base;
+	struct commit_graph *base_graph;
 
 	const uint32_t *chunk_oid_fanout;
 	const unsigned char *chunk_oid_lookup;
 	const unsigned char *chunk_commit_data;
 	const unsigned char *chunk_extra_edges;
+	const unsigned char *chunk_base_graphs;
 };
 
 struct commit_graph *load_commit_graph_one_fd_st(int fd, struct stat *st);
-
+struct commit_graph *read_commit_graph_one(struct repository *r, const char *obj_dir);
 struct commit_graph *parse_commit_graph(void *graph_map, int fd,
 					size_t graph_size);
 
@@ -67,14 +73,25 @@ int generation_numbers_enabled(struct repository *r);
 
 #define COMMIT_GRAPH_APPEND     (1 << 0)
 #define COMMIT_GRAPH_PROGRESS   (1 << 1)
+#define COMMIT_GRAPH_SPLIT      (1 << 2)
 
-int write_commit_graph_reachable(const char *obj_dir, unsigned int flags);
+struct split_commit_graph_opts {
+	int size_multiple;
+	int max_commits;
+	timestamp_t expire_time;
+};
+
+int write_commit_graph_reachable(const char *obj_dir, unsigned int flags,
+				 const struct split_commit_graph_opts *split_opts);
 int write_commit_graph(const char *obj_dir,
 		       struct string_list *pack_indexes,
 		       struct string_list *commit_hex,
-		       unsigned int flags);
+		       unsigned int flags,
+		       const struct split_commit_graph_opts *split_opts);
 
-int verify_commit_graph(struct repository *r, struct commit_graph *g);
+#define COMMIT_GRAPH_VERIFY_SHALLOW	(1 << 0)
+
+int verify_commit_graph(struct repository *r, struct commit_graph *g, int flags);
 
 void close_commit_graph(struct raw_object_store *);
 void free_commit_graph(struct commit_graph *);
